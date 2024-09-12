@@ -53,6 +53,9 @@ use crate::{
     value_balance::{ValueBalance, ValueBalanceError},
 };
 
+#[derive(Debug)] //Clone, PartialEq, Eq)]
+pub struct Transaction(zcash_primitives::transaction::Transaction);
+
 /// A Zcash transaction.
 ///
 /// A transaction is an encoded data structure that facilitates the transfer of
@@ -64,116 +67,116 @@ use crate::{
 /// Zcash has a number of different transaction formats. They are represented
 /// internally by different enum variants. Because we checkpoint on Canopy
 /// activation, we do not validate any pre-Sapling transaction types.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(
-    any(test, feature = "proptest-impl", feature = "elasticsearch"),
-    derive(Serialize)
-)]
-pub enum Transaction {
-    /// A fully transparent transaction (`version = 1`).
-    V1 {
-        /// The transparent inputs to the transaction.
-        inputs: Vec<transparent::Input>,
-        /// The transparent outputs from the transaction.
-        outputs: Vec<transparent::Output>,
-        /// The earliest time or block height that this transaction can be added to the
-        /// chain.
-        lock_time: LockTime,
-    },
-    /// A Sprout transaction (`version = 2`).
-    V2 {
-        /// The transparent inputs to the transaction.
-        inputs: Vec<transparent::Input>,
-        /// The transparent outputs from the transaction.
-        outputs: Vec<transparent::Output>,
-        /// The earliest time or block height that this transaction can be added to the
-        /// chain.
-        lock_time: LockTime,
-        /// The JoinSplit data for this transaction, if any.
-        joinsplit_data: Option<JoinSplitData<Bctv14Proof>>,
-    },
-    /// An Overwinter transaction (`version = 3`).
-    V3 {
-        /// The transparent inputs to the transaction.
-        inputs: Vec<transparent::Input>,
-        /// The transparent outputs from the transaction.
-        outputs: Vec<transparent::Output>,
-        /// The earliest time or block height that this transaction can be added to the
-        /// chain.
-        lock_time: LockTime,
-        /// The latest block height that this transaction can be added to the chain.
-        expiry_height: block::Height,
-        /// The JoinSplit data for this transaction, if any.
-        joinsplit_data: Option<JoinSplitData<Bctv14Proof>>,
-    },
-    /// A Sapling transaction (`version = 4`).
-    V4 {
-        /// The transparent inputs to the transaction.
-        inputs: Vec<transparent::Input>,
-        /// The transparent outputs from the transaction.
-        outputs: Vec<transparent::Output>,
-        /// The earliest time or block height that this transaction can be added to the
-        /// chain.
-        lock_time: LockTime,
-        /// The latest block height that this transaction can be added to the chain.
-        expiry_height: block::Height,
-        /// The JoinSplit data for this transaction, if any.
-        joinsplit_data: Option<JoinSplitData<Groth16Proof>>,
-        /// The sapling shielded data for this transaction, if any.
-        sapling_shielded_data: Option<sapling::ShieldedData<sapling::PerSpendAnchor>>,
-    },
-    /// A `version = 5` transaction , which supports Orchard, Sapling, and transparent, but not Sprout.
-    V5 {
-        /// The Network Upgrade for this transaction.
-        ///
-        /// Derived from the ConsensusBranchId field.
-        network_upgrade: NetworkUpgrade,
-        /// The earliest time or block height that this transaction can be added to the
-        /// chain.
-        lock_time: LockTime,
-        /// The latest block height that this transaction can be added to the chain.
-        expiry_height: block::Height,
-        /// The transparent inputs to the transaction.
-        inputs: Vec<transparent::Input>,
-        /// The transparent outputs from the transaction.
-        outputs: Vec<transparent::Output>,
-        /// The sapling shielded data for this transaction, if any.
-        sapling_shielded_data: Option<sapling::ShieldedData<sapling::SharedAnchor>>,
-        /// The orchard data for this transaction, if any.
-        orchard_shielded_data: Option<orchard::ShieldedData>,
-    },
-}
-
-impl fmt::Display for Transaction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut fmter = f.debug_struct("Transaction");
-
-        fmter.field("version", &self.version());
-
-        if let Some(network_upgrade) = self.network_upgrade() {
-            fmter.field("network_upgrade", &network_upgrade);
-        }
-
-        if let Some(lock_time) = self.lock_time() {
-            fmter.field("lock_time", &lock_time);
-        }
-
-        if let Some(expiry_height) = self.expiry_height() {
-            fmter.field("expiry_height", &expiry_height);
-        }
-
-        fmter.field("transparent_inputs", &self.inputs().len());
-        fmter.field("transparent_outputs", &self.outputs().len());
-        fmter.field("sprout_joinsplits", &self.joinsplit_count());
-        fmter.field("sapling_spends", &self.sapling_spends_per_anchor().count());
-        fmter.field("sapling_outputs", &self.sapling_outputs().count());
-        fmter.field("orchard_actions", &self.orchard_actions().count());
-
-        fmter.field("unmined_id", &self.unmined_id());
-
-        fmter.finish()
-    }
-}
+// #[derive(Clone, Debug, PartialEq, Eq)]
+// #[cfg_attr(
+//     any(test, feature = "proptest-impl", feature = "elasticsearch"),
+//     derive(Serialize)
+// )]
+// pub enum Transaction {
+//     /// A fully transparent transaction (`version = 1`).
+//     V1 {
+//         /// The transparent inputs to the transaction.
+//         inputs: Vec<transparent::Input>,
+//         /// The transparent outputs from the transaction.
+//         outputs: Vec<transparent::Output>,
+//         /// The earliest time or block height that this transaction can be added to the
+//         /// chain.
+//         lock_time: LockTime,
+//     },
+//     /// A Sprout transaction (`version = 2`).
+//     V2 {
+//         /// The transparent inputs to the transaction.
+//         inputs: Vec<transparent::Input>,
+//         /// The transparent outputs from the transaction.
+//         outputs: Vec<transparent::Output>,
+//         /// The earliest time or block height that this transaction can be added to the
+//         /// chain.
+//         lock_time: LockTime,
+//         /// The JoinSplit data for this transaction, if any.
+//         joinsplit_data: Option<JoinSplitData<Bctv14Proof>>,
+//     },
+//     /// An Overwinter transaction (`version = 3`).
+//     V3 {
+//         /// The transparent inputs to the transaction.
+//         inputs: Vec<transparent::Input>,
+//         /// The transparent outputs from the transaction.
+//         outputs: Vec<transparent::Output>,
+//         /// The earliest time or block height that this transaction can be added to the
+//         /// chain.
+//         lock_time: LockTime,
+//         /// The latest block height that this transaction can be added to the chain.
+//         expiry_height: block::Height,
+//         /// The JoinSplit data for this transaction, if any.
+//         joinsplit_data: Option<JoinSplitData<Bctv14Proof>>,
+//     },
+//     /// A Sapling transaction (`version = 4`).
+//     V4 {
+//         /// The transparent inputs to the transaction.
+//         inputs: Vec<transparent::Input>,
+//         /// The transparent outputs from the transaction.
+//         outputs: Vec<transparent::Output>,
+//         /// The earliest time or block height that this transaction can be added to the
+//         /// chain.
+//         lock_time: LockTime,
+//         /// The latest block height that this transaction can be added to the chain.
+//         expiry_height: block::Height,
+//         /// The JoinSplit data for this transaction, if any.
+//         joinsplit_data: Option<JoinSplitData<Groth16Proof>>,
+//         /// The sapling shielded data for this transaction, if any.
+//         sapling_shielded_data: Option<sapling::ShieldedData<sapling::PerSpendAnchor>>,
+//     },
+//     /// A `version = 5` transaction , which supports Orchard, Sapling, and transparent, but not Sprout.
+//     V5 {
+//         /// The Network Upgrade for this transaction.
+//         ///
+//         /// Derived from the ConsensusBranchId field.
+//         network_upgrade: NetworkUpgrade,
+//         /// The earliest time or block height that this transaction can be added to the
+//         /// chain.
+//         lock_time: LockTime,
+//         /// The latest block height that this transaction can be added to the chain.
+//         expiry_height: block::Height,
+//         /// The transparent inputs to the transaction.
+//         inputs: Vec<transparent::Input>,
+//         /// The transparent outputs from the transaction.
+//         outputs: Vec<transparent::Output>,
+//         /// The sapling shielded data for this transaction, if any.
+//         sapling_shielded_data: Option<sapling::ShieldedData<sapling::SharedAnchor>>,
+//         /// The orchard data for this transaction, if any.
+//         orchard_shielded_data: Option<orchard::ShieldedData>,
+//     },
+// }
+// 
+// impl fmt::Display for Transaction {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let mut fmter = f.debug_struct("Transaction");
+// 
+//         fmter.field("version", &self.version());
+// 
+//         if let Some(network_upgrade) = self.network_upgrade() {
+//             fmter.field("network_upgrade", &network_upgrade);
+//         }
+// 
+//         if let Some(lock_time) = self.lock_time() {
+//             fmter.field("lock_time", &lock_time);
+//         }
+// 
+//         if let Some(expiry_height) = self.expiry_height() {
+//             fmter.field("expiry_height", &expiry_height);
+//         }
+// 
+//         fmter.field("transparent_inputs", &self.inputs().len());
+//         fmter.field("transparent_outputs", &self.outputs().len());
+//         fmter.field("sprout_joinsplits", &self.joinsplit_count());
+//         fmter.field("sapling_spends", &self.sapling_spends_per_anchor().count());
+//         fmter.field("sapling_outputs", &self.sapling_outputs().count());
+//         fmter.field("orchard_actions", &self.orchard_actions().count());
+// 
+//         fmter.field("unmined_id", &self.unmined_id());
+// 
+//         fmter.finish()
+//     }
+// }
 
 impl Transaction {
     // identifiers and hashes
@@ -183,7 +186,8 @@ impl Transaction {
     /// The hash uniquely identifies mined v5 transactions,
     /// and all v1-v4 transactions, whether mined or unmined.
     pub fn hash(&self) -> Hash {
-        Hash::from(self)
+        //Hash::from(self)
+        Hash(*self.0.txid().as_ref())
     }
 
     /// Compute the unmined transaction ID of this transaction.
@@ -191,7 +195,7 @@ impl Transaction {
     /// This ID uniquely identifies unmined transactions,
     /// regardless of version.
     pub fn unmined_id(&self) -> UnminedTxId {
-        UnminedTxId::from(self)
+        //UnminedTxId::from(self)
     }
 
     /// Calculate the sighash for the current transaction.
@@ -242,33 +246,38 @@ impl Transaction {
     ///
     /// [ZIP-244]: https://zips.z.cash/zip-0244.
     pub fn auth_digest(&self) -> Option<AuthDigest> {
-        match self {
-            Transaction::V1 { .. }
-            | Transaction::V2 { .. }
-            | Transaction::V3 { .. }
-            | Transaction::V4 { .. } => None,
-            Transaction::V5 { .. } => Some(AuthDigest::from(self)),
-        }
+        Some(AuthDigest(self.0.auth_commitment().as_array()))
+        //match self {
+        //    Transaction::V1 { .. }
+        //    | Transaction::V2 { .. }
+        //    | Transaction::V3 { .. }
+        //    | Transaction::V4 { .. } => None,
+        //    Transaction::V5 { .. } => Some(AuthDigest::from(self)),
+        //}
     }
 
     // other properties
 
     /// Does this transaction have transparent or shielded inputs?
     pub fn has_transparent_or_shielded_inputs(&self) -> bool {
-        !self.inputs().is_empty() || self.has_shielded_inputs()
+        //!self.inputs().is_empty() || self.has_shielded_inputs()
+        self.0.transparent_bundle().is_some() || 
+            self.0.sprout_bundle().is_some() || 
+            self.0.sapling_bundle().is_some() || 
+            self.0.orchard_bundle().is_some()
     }
 
     /// Does this transaction have shielded inputs?
     ///
     /// See [`Self::has_transparent_or_shielded_inputs`] for details.
     pub fn has_shielded_inputs(&self) -> bool {
-        self.joinsplit_count() > 0
-            || self.sapling_spends_per_anchor().count() > 0
-            || (self.orchard_actions().count() > 0
-                && self
-                    .orchard_flags()
-                    .unwrap_or_else(orchard::Flags::empty)
-                    .contains(orchard::Flags::ENABLE_SPENDS))
+        //self.joinsplit_count() > 0
+        //    || self.sapling_spends_per_anchor().count() > 0
+        //    || (self.orchard_actions().count() > 0
+        //        && self
+        //            .orchard_flags()
+        //            .unwrap_or_else(orchard::Flags::empty)
+        //            .contains(orchard::Flags::ENABLE_SPENDS))
     }
 
     /// Does this transaction have transparent or shielded outputs?
