@@ -35,6 +35,9 @@ pub struct BlockSummary {
     pub orchard_actions: usize,
     pub ironwood_actions: usize,
     pub pools: Vec<PoolBalance>,
+    /// The Network Sustainability Mechanism (NSM) value balance, if the node reports it.
+    /// It is not part of the chain supply.
+    pub nsm: Option<PoolBalance>,
 }
 
 impl BlockSummary {
@@ -71,6 +74,11 @@ pub fn summarize(block: &RpcBlock) -> BlockSummary {
                 delta_zat: pool.value_delta_zat,
             })
             .collect(),
+        nsm: block.nsm_value_balance.as_ref().map(|nsm| PoolBalance {
+            id: nsm.id.clone(),
+            balance_zat: nsm.chain_value_zat,
+            delta_zat: nsm.value_delta_zat,
+        }),
     };
 
     for tx in &block.tx {
@@ -144,7 +152,8 @@ mod tests {
         "valuePools": [
             {"id": "transparent", "chainValueZat": 500, "valueDeltaZat": 300},
             {"id": "sapling", "chainValueZat": 900, "valueDeltaZat": -50}
-        ]
+        ],
+        "nsmValueBalance": {"id": "nsm", "chainValueZat": 7000, "valueDeltaZat": 60}
     }"#;
 
     fn block() -> RpcBlock {
@@ -185,6 +194,33 @@ mod tests {
     #[test]
     fn net_issuance_sums_pool_deltas() {
         assert_eq!(summarize(&block()).net_issuance_zat(), Some(250));
+    }
+
+    #[test]
+    fn reads_the_nsm_balance_separately_from_the_pools() {
+        let summary = summarize(&block());
+        assert_eq!(
+            summary.nsm,
+            Some(PoolBalance {
+                id: "nsm".to_owned(),
+                balance_zat: 7000,
+                delta_zat: Some(60),
+            })
+        );
+        assert!(summary.pools.iter().all(|pool| pool.id != "nsm"));
+        assert_eq!(summary.net_issuance_zat(), Some(250));
+    }
+
+    #[test]
+    fn nsm_balance_is_absent_when_the_node_does_not_report_it() {
+        let mut json: serde_json::Value =
+            serde_json::from_str(BLOCK_JSON).expect("test vector is valid JSON");
+        json.as_object_mut()
+            .expect("test vector is a JSON object")
+            .remove("nsmValueBalance");
+        let block: RpcBlock =
+            serde_json::from_value(json).expect("test vector is valid getblock JSON");
+        assert_eq!(summarize(&block).nsm, None);
     }
 
     #[test]

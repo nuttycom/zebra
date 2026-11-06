@@ -204,6 +204,13 @@ fn draw_pools(frame: &mut Frame, area: Rect, block: Option<&BlockSummary>) {
         ])
         .add_modifier(Modifier::BOLD),
     );
+    if let Some(nsm) = &block.nsm {
+        rows.push(Row::new(vec![
+            Cell::from(nsm.id.clone()),
+            delta_cell(nsm.delta_zat),
+            Cell::from(format_zec(nsm.balance_zat, false)),
+        ]));
+    }
 
     frame.render_widget(
         Table::new(

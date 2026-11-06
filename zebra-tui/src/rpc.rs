@@ -167,6 +167,9 @@ pub struct RpcBlock {
     pub tx: Vec<RpcTransaction>,
     #[serde(default)]
     pub value_pools: Vec<RpcValuePool>,
+    /// The Network Sustainability Mechanism (NSM) value balance. Nodes without this field omit it.
+    #[serde(default)]
+    pub nsm_value_balance: Option<RpcValuePool>,
 }
 
 /// One transaction in a `getblock` verbosity 2 response.
